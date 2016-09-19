@@ -26,11 +26,30 @@ namespace OriMap {
         private Point currentPlayerPosition = new Point(0, 0);
 
         private List<Marker> markers = new List<Marker>();
+        private bool transparencyEnabled = false;
+        private bool showMarkerDots = false;
 
-        public OriMapWindow() {
+        public delegate void OnChangeTransparencyHandler(bool newTransparency);
+        public event OnChangeTransparencyHandler OnChangeTransparency;
+
+        public OriMapWindow(bool transparent = false, Rect windowRect = new Rect()) {
             InitializeComponent();
             mapTransform = new TranslateTransform();
             mapGrid.RenderTransform = mapTransform;
+
+            if (transparent) {
+                transparencyEnabled = true;
+                WindowStyle = WindowStyle.None;
+                AllowsTransparency = true;
+                mainGrid.Background = Brushes.Transparent;
+            } else {
+                mainGrid.OpacityMask = null;
+            }
+
+            Left = windowRect.Left;
+            Top = windowRect.Top;
+            Height = windowRect.Height;
+            Width = windowRect.Width;
         }
 
         public void setPos(System.Drawing.PointF pos) {
@@ -38,11 +57,19 @@ namespace OriMap {
             currentPlayerPosition.Y = pos.Y;
             mapTransform.X = ((-pos.X) * MapCalc.FACTOR_X + MapCalc.TRANSFORM_TO_ORIGIN_X) + mainGrid.ActualWidth / 2;
             mapTransform.Y = ((pos.Y) * MapCalc.FACTOR_Y + MapCalc.TRANSFORM_TO_ORIGIN_Y) + mainGrid.ActualHeight / 2;
+            alphaMask.Viewport = new Rect(0, 0, mainGrid.ActualWidth, mainGrid.ActualHeight);
+
+            foreach (Marker marker in markers) {
+                if (marker.Split && marker.SplitEnabled && MapCalc.distance(currentPlayerPosition, marker.IngamePosition) < 6) {
+                    marker.Triggered = true;
+                    marker.SplitEnabled = false;
+                    processMarkers();
+                }
+            }
         }
 
         private void loadMarkers() {
             markers.Clear();
-            markersCanvas.Children.Clear();
 
             if (File.Exists("markers.xml")) {
                 XDocument doc = XDocument.Load("markers.xml");
@@ -58,14 +85,92 @@ namespace OriMap {
                         double.Parse(element.Attribute("pos_y").Value, CultureInfo.GetCultureInfo("en-US"))
                     );
                     marker.Name = element.Attribute("name").Value;
+                    marker.Split = bool.Parse(element.Attribute("split").Value);
                     markers.Add(marker);
                 }
 
-                foreach (Marker marker in markers) {
-                    UIMarker uiMarker = new UIMarker();
-                    uiMarker.setMarker(marker);
-                    markersCanvas.Children.Add(uiMarker);
+                processMarkers();
+            }
+        }
+
+        private void processMarkers() {
+            if (markers.Count > 0)
+                markers[0].Split = true;
+
+            int splitStartIndex = 0;
+            int currentMarkerIndex = 0;
+            foreach (Marker marker in markers) {
+                if (marker.Split) {
+                    if (marker.Triggered) {
+                        splitStartIndex = currentMarkerIndex;
+                    } else {
+                        marker.SplitEnabled = true;
+                        break;
+                    }
+                } 
+
+                currentMarkerIndex++;
+            }
+
+            markersCanvas.Children.Clear();
+            bool first = true;
+            Point lastPosition = new Point();
+            bool isHidden = true;
+            currentMarkerIndex = 0;
+            bool hideLines = true;
+            foreach (Marker marker in markers) {
+                if (marker.Removed) continue;
+
+                if (!first && !hideLines) {
+                    Line line = new Line();
+
+                    line.StrokeThickness = 2;
+                    line.Stroke = Brushes.White;
+                    Point newPosition = MapCalc.ingameToMap(marker.IngamePosition);
+
+                    line.X1 = lastPosition.X;
+                    line.Y1 = lastPosition.Y;
+                    line.X2 = newPosition.X;
+                    line.Y2 = newPosition.Y;
+
+                    if (isHidden) {
+                        line.Opacity = 0.2;
+                    }
+
+                    markersCanvas.Children.Add(line);
                 }
+
+                if (currentMarkerIndex == splitStartIndex) {
+                    isHidden = false;
+                    hideLines = false;
+                }
+
+                UIMarker uiMarker = new UIMarker();
+                uiMarker.setMarker(marker);
+                markersCanvas.Children.Add(uiMarker);
+
+                uiMarker.OnMarkerUpdated += processMarkers;
+
+                if (!first && !showMarkerDots && !(marker.Split && !marker.Triggered && !isHidden) && marker.Name == "") {
+                    uiMarker.ellipse.Fill = Brushes.Transparent;
+                    uiMarker.ellipse.StrokeThickness = 0;
+                    uiMarker.label.Visibility = Visibility.Hidden;
+                }
+
+                if (isHidden) {
+                    uiMarker.Opacity = 0.2;
+                }
+
+                if (marker.Split && !marker.Triggered) {
+                    if (!isHidden) {
+                        isHidden = true;
+                    }
+                }
+
+                lastPosition = MapCalc.ingameToMap(marker.IngamePosition);
+
+                currentMarkerIndex++;
+                first = false;
             }
         }
 
@@ -84,6 +189,7 @@ namespace OriMap {
                 markerElement.Add(new XAttribute("pos_x", marker.IngamePosition.X.ToString(CultureInfo.GetCultureInfo("en-US"))));
                 markerElement.Add(new XAttribute("pos_y", marker.IngamePosition.Y.ToString(CultureInfo.GetCultureInfo("en-US"))));
                 markerElement.Add(new XAttribute("name", marker.Name));
+                markerElement.Add(new XAttribute("split", marker.Split.ToString()));
 
                 root.Add(markerElement);
             }
@@ -100,18 +206,15 @@ namespace OriMap {
         private void addNewMarkerAtPosition(Point pos) {
             Marker marker = new Marker();
             marker.IngamePosition = pos;
-            marker.Color = Colors.Red;
-            marker.Name = "New Marker";
+            marker.Color = Colors.White;
 
             MarkerEditor editor = new MarkerEditor();
             editor.setMarker(marker);
             editor.Owner = this;
 
             if (editor.ShowDialog() == true) {
-                UIMarker uiMarker = new UIMarker();
                 markers.Add(marker);
-                uiMarker.setMarker(editor.getMarker());
-                markersCanvas.Children.Add(uiMarker);
+                processMarkers();
             }
         }
 
@@ -149,6 +252,19 @@ namespace OriMap {
 
         private void Window_Loaded(object sender, RoutedEventArgs e) {
             loadMarkers();
+        }
+
+        private void toggleTransparencyMenuButton_Click(object sender, RoutedEventArgs e) {
+            OnChangeTransparency?.Invoke(!transparencyEnabled);
+        }
+
+        private void resetMarkersMenuItem_Click(object sender, RoutedEventArgs e) {
+            foreach (Marker marker in markers) {
+                marker.SplitEnabled = false;
+                marker.Triggered = false;
+            }
+
+            processMarkers();
         }
     }
 }

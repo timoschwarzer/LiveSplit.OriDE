@@ -25,6 +25,7 @@ namespace OriMap {
             colorBorder.Background = new SolidColorBrush(_marker.Color);
             nameTextBox.Text = _marker.Name;
             positionLabel.Content = _marker.IngamePosition.ToString();
+            splitCheckBox.IsChecked = _marker.Split;
         }
 
         public Marker getMarker() {
@@ -52,6 +53,10 @@ namespace OriMap {
         private void saveButton_Click(object sender, RoutedEventArgs e) {
             DialogResult = true;
             Close();
+        }
+
+        private void splitCheckBox_Checked(object sender, RoutedEventArgs e) {
+            _marker.Split = splitCheckBox.IsChecked == true;
         }
     }
 }

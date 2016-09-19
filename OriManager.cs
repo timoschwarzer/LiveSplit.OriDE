@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using OriMap;
+using System.Windows;
 
 namespace LiveSplit.OriDE {
 	public partial class OriManager : Form {
@@ -74,15 +75,26 @@ namespace LiveSplit.OriDE {
 				}
 			} else if (e.Control && e.KeyCode == Keys.M) {
                 if (this.mapWindow == null || !this.mapWindow.IsLoaded) {
-                    this.mapWindow = new OriMapWindow();
+                    this.mapWindow = new OriMapWindow(false, new Rect(0, 0, 500, 300));
+                    this.mapWindow.OnChangeTransparency += new OriMapWindow.OnChangeTransparencyHandler(MapWindowChangeTransparencyHandler);
                     this.mapWindow.Show();
                 } else if (this.mapWindow.IsVisible) {
                     this.mapWindow.Hide();
                 } else {
                     this.mapWindow.Show();
                 }
+
+
             }
 		}
+
+        private void MapWindowChangeTransparencyHandler(bool newTransparency) {
+            OriMapWindow newMapWindow = new OriMapWindow(newTransparency, new Rect(new System.Windows.Point(this.mapWindow.Left, this.mapWindow.Top), new System.Windows.Size(this.mapWindow.Width, this.mapWindow.Height)));
+            newMapWindow.OnChangeTransparency += new OriMapWindow.OnChangeTransparencyHandler(MapWindowChangeTransparencyHandler);
+            this.mapWindow.Close();
+            this.mapWindow = newMapWindow;
+            this.mapWindow.Show();
+        }
 
 		private void UpdateLoop() {
 			bool lastHooked = false;

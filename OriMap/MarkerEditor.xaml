@@ -12,8 +12,9 @@
         <Label Content="Color:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
         <Label Content="Name:" HorizontalAlignment="Left" Margin="170,10,0,0" VerticalAlignment="Top"/>
         <TextBox x:Name="nameTextBox" HorizontalAlignment="Left" Height="23" Margin="170,36,0,0" TextWrapping="Wrap" Text="Marker" VerticalAlignment="Top" Width="362" VerticalContentAlignment="Center" TextChanged="nameTextBox_TextChanged"/>
-        <Button x:Name="saveButton" Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="61" Click="saveButton_Click"/>
+        <Button x:Name="saveButton" Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="61" Click="saveButton_Click" IsDefault="True"/>
         <Label x:Name="positionLabel" Content="Position: 0, 0" HorizontalAlignment="Left" Margin="170,0,0,7" VerticalAlignment="Bottom"/>
+        <CheckBox x:Name="splitCheckBox" Content="Split" HorizontalAlignment="Right" Margin="0,0,76,12" VerticalAlignment="Bottom" Checked="splitCheckBox_Checked" Unchecked="splitCheckBox_Checked"/>
 
     </Grid>
 </Window>

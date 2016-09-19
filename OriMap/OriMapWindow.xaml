@@ -5,8 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OriMap"
         mc:Ignorable="d"
-        Title="OriMap" Height="410.87" Width="659.627" Topmost="True" Closing="Window_Closing" Loaded="Window_Loaded">
+        Title="OriMap" Height="410.87" Width="659.627" Topmost="True" Closing="Window_Closing" Loaded="Window_Loaded" Background="#00FFFFFF" Icon="ori.ico">
     <Grid x:Name="mainGrid" Background="Black" ContextMenuOpening="mainGrid_ContextMenuOpening">
+        <Grid.OpacityMask>
+            <ImageBrush x:Name="alphaMask" ImageSource="Images/alpha_mask.png" ViewportUnits="Absolute" Viewport="0,0,200,200" />
+        </Grid.OpacityMask>
         <Grid.ContextMenu>
             <ContextMenu>
                 <MenuItem x:Name="zoomInMenuItem" Header="Zoom In" StaysOpenOnClick="True" Click="zoomInMenuItem_Click"/>
@@ -17,6 +20,9 @@
                     <MenuItem x:Name="addMarkerAtClickPositionMenuItem" Header="At Click Position" Click="addMarkerAtClickPositionMenuItem_Click"/>
                     <MenuItem x:Name="addMarkerAtPlayerPositionMenuItem" Header="At Player Position" Click="addMarkerAtPlayerPositionMenuItem_Click"/>
                 </MenuItem>
+                <MenuItem x:Name="resetMarkersMenuItem" Header="Reset Markers" Click="resetMarkersMenuItem_Click" />
+                <Separator />
+                <MenuItem x:Name="toggleTransparencyMenuButton" Header="Enable Transparency" Click="toggleTransparencyMenuButton_Click" />
             </ContextMenu>
         </Grid.ContextMenu>
         <Grid x:Name="mapScaleControl" RenderTransformOrigin="0.5,0.5">
@@ -24,9 +30,9 @@
                 <ScaleTransform x:Name="mapScale" ScaleX="1"/>
             </Grid.RenderTransform>
             <Grid x:Name="mapGrid">
-                <Image x:Name="mapImage" HorizontalAlignment="Left" Height="6257" VerticalAlignment="Top" Width="8357" Source="/OriMap;Component/Images/map.png" RenderTransformOrigin="0.5,0.5" Margin="0,0,-7703.4,-5875.4" />
+                <Image x:Name="mapImage" HorizontalAlignment="Left" Height="6257" VerticalAlignment="Top" Width="8357" Source="Images/map_alpha.png" RenderTransformOrigin="0.5,0.5" Margin="0,0,-7703.4,-5875.4" />
                 <Canvas x:Name="markersCanvas">
-                    
+
                 </Canvas>
             </Grid>
         </Grid>

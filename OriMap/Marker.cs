@@ -10,7 +10,11 @@ namespace OriMap {
     public class Marker {
         public bool Removed { get; set; } = false;
         public Point IngamePosition { get; set; } = new Point();
-        public string Name { get; set; } = "Marker";
+        public string Name { get; set; } = "";
         public Color Color { get; set; } = Colors.Red;
+
+        public bool Split { get; set; } = false;
+        public bool SplitEnabled { get; set; } = false;
+        public bool Triggered { get; set; } = false;
     }
 }

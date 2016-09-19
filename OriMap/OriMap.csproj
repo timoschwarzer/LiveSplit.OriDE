@@ -104,7 +104,17 @@
     <Resource Include="ori.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Images\map.png" />
+    <None Include="Images\map.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\map_alpha.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\alpha_mask.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

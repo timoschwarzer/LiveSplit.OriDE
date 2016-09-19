@@ -22,13 +22,21 @@ namespace OriMap {
             InitializeComponent();
         }
 
+        public delegate void onMarkerUpdatedEventHandler();
+        public event onMarkerUpdatedEventHandler OnMarkerUpdated;
+
         private Marker _marker = null;
 
         public void setMarker(Marker marker) {
             setCanvasPosition(MapCalc.ingameToMap(marker.IngamePosition));
             SolidColorBrush brush = new SolidColorBrush(marker.Color);
             brush.Opacity = 0.5;
+
             ellipse.Fill = brush;
+            if (marker.Split && marker.SplitEnabled) {
+                ellipse.StrokeThickness = 4;
+            }
+
             label.Content = marker.Name;
             _marker = marker;
         }
@@ -43,6 +51,7 @@ namespace OriMap {
             editor.setMarker(_marker);
             if (editor.ShowDialog() == true) {
                 setMarker(editor.getMarker());
+                OnMarkerUpdated?.Invoke();
             }
         }
 
@@ -50,6 +59,7 @@ namespace OriMap {
             _marker.Removed = true;
             this.Visibility = Visibility.Collapsed;
             ((Canvas)Parent).Children.Remove(this);
+            OnMarkerUpdated?.Invoke();
         }
     }
 }
