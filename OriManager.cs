@@ -12,6 +12,9 @@ namespace LiveSplit.OriDE {
 		public OriMemory Memory { get; set; }
 		private bool useLivesplitColors = true, extraFast = false, goingFast = false;
 		private KeyboardHook kbHook;
+        private SaveManager saveManager;
+        private OriMap.OriMapWindow mapWindow;
+
 		public OriManager() {
 			this.DoubleBuffered = true;
 			kbHook = new KeyboardHook(KeyboardHook.Parameters.PassAllKeysToNextApp);
@@ -171,7 +174,7 @@ namespace LiveSplit.OriDE {
 				lblPos.Text = "Pos: " + pos.X.ToString("0.000") + ", " + pos.Y.ToString("0.000");
 				lblSpeed.Text = (extraFast ? "Insane Speed: " : "Speed: ") + currentSpeed.X.ToString("0.000") + ", " + currentSpeed.Y.ToString("0.000") + " (" + Math.Sqrt(currentSpeed.X * currentSpeed.X + currentSpeed.Y * currentSpeed.Y).ToString("0.000") + ")";
 				PointF cursor = Memory.GetCursorPosition();
-				lblCursorPosition.Text = "Cursor: " + cursor.X.ToString("0.000") + ", " + cursor.Y.ToString("0.000");
+				// lblCursorPosition.Text = "Cursor: " + cursor.X.ToString("0.000") + ", " + cursor.Y.ToString("0.000");
 
                 if (isInGameWorld) {
                     int level = Memory.GetCurrentLevel();
