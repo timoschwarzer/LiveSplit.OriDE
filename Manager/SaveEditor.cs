@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
@@ -6,15 +7,29 @@ using System.Windows.Forms;
 namespace LiveSplit.OriDE {
 	public partial class SaveEditor : Form {
 		public SaveGameData Save { get; set; }
+		private List<TreeNode> allNodes = new List<TreeNode>();
+		private List<TreeNode> modifiedNodes = new List<TreeNode>();
+		private bool loading = false;
 
+		private static string currentFilter = null;
 		public SaveEditor() {
 			InitializeComponent();
 
 			Assembly asm = Assembly.GetExecutingAssembly();
-			Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Manager.Images.kuroBG.png");
+			Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Images.kuroBG.png");
 			if (file != null) {
 				this.BackgroundImage = Image.FromStream(file);
 			}
+		}
+		private void SaveEditor_Shown(object sender, EventArgs e) {
+			SuspendUpdate.Suspend(this);
+			UpdateInfo();
+			SuspendUpdate.Resume(this);
+			txtFilter.Text = currentFilter;
+			txtFilter_TextChanged(this, null);
+		}
+		private void SaveEditor_FormClosed(object sender, FormClosedEventArgs e) {
+			currentFilter = txtFilter.Text;
 		}
 
 		public void UpdateInfo() {
@@ -34,12 +49,18 @@ namespace LiveSplit.OriDE {
 				txtHP.Text = ((data?.GetFloat((int)SeinHealthController.Amount)).GetValueOrDefault(0) / 4f).ToString("0.##");
 				txtHPMax.Text = ((data?.GetInt((int)SeinHealthController.MaxHealth)).GetValueOrDefault(0) / 4).ToString();
 
-				data = Save.Master[MasterAssets.PlatformMovement];
-				txtPosX.Text = data?.GetFloat((int)SaveInfo.PosX).ToString();
-				txtPosY.Text = data?.GetFloat((int)SaveInfo.PosY).ToString();
+				IntFloat trueValue = default(IntFloat);
 
-				txtVelocityX.Text = data?.GetFloat((int)SaveInfo.SpeedX).ToString();
-				txtVelocityY.Text = data?.GetFloat((int)SaveInfo.SpeedY).ToString();
+				data = Save.Master[MasterAssets.PlatformMovement];
+				trueValue.IntVal = data.GetInt((int)SaveInfo.PosX);
+				txtPosX.Text = trueValue.FloatVal.ToString("R");
+				trueValue.IntVal = data.GetInt((int)SaveInfo.PosY);
+				txtPosY.Text = trueValue.FloatVal.ToString("R");
+
+				trueValue.IntVal = data.GetInt((int)SaveInfo.SpeedX);
+				txtVelocityX.Text = trueValue.FloatVal.ToString("R");
+				trueValue.IntVal = data.GetInt((int)SaveInfo.SpeedY);
+				txtVelocityY.Text = trueValue.FloatVal.ToString("R");
 
 				data = Save.Master[MasterAssets.PlayerAbilities];
 				if (data != null) {
@@ -71,9 +92,9 @@ namespace LiveSplit.OriDE {
 					chkRegroup.Checked = data[(int)Abilities.Regroup] == 1;
 					chkRekindle.Checked = data[(int)Abilities.Rekindle] == 1;
 					chkSense.Checked = data[(int)Abilities.Sense] == 1;
-					chkSoulLinkEfficiency.Checked = data[(int)Abilities.SoulEfficiency] == 1;
+					chkSoulLinkEfficiency.Checked = data[(int)Abilities.SoulFlameEfficiency] == 1;
 					chkSparkFlame.Checked = data[(int)Abilities.SparkFlame] == 1;
-					chkSpiritEfficiency.Checked = data[(int)Abilities.SoulFlameEfficiency] == 1;
+					chkSpiritEfficiency.Checked = data[(int)Abilities.SoulEfficiency] == 1;
 					chkSpiritFlame.Checked = data[(int)Abilities.SpiritFlame] == 1;
 					chkSplitFlame.Checked = data[(int)Abilities.SplitFlameUpgrade] == 1;
 					chkStomp.Checked = data[(int)Abilities.Stomp] == 1;
@@ -95,8 +116,10 @@ namespace LiveSplit.OriDE {
 				data = Save.Master[MasterAssets.SeinSoulFlame];
 				bool hasSoulFlame = data != null && data[(int)SoulFlameInfo.HasSoulFlame] == 1;
 				if (hasSoulFlame) {
-					txtSoulX.Text = data.GetFloat((int)SoulFlameInfo.SoulX).ToString();
-					txtSoulY.Text = data.GetFloat((int)SoulFlameInfo.SoulY).ToString();
+					trueValue.IntVal = data.GetInt((int)SoulFlameInfo.SoulX);
+					txtSoulX.Text = trueValue.FloatVal.ToString("R");
+					trueValue.IntVal = data.GetInt((int)SoulFlameInfo.SoulY);
+					txtSoulY.Text = trueValue.FloatVal.ToString("R");
 				} else {
 					txtSoulX.Text = string.Empty;
 					txtSoulY.Text = string.Empty;
@@ -124,16 +147,118 @@ namespace LiveSplit.OriDE {
 				data = Save.Master[MasterAssets.GameTimer];
 				txtTime.Text = data?.GetFloat(0).ToString("0.000");
 
+				data = Save.Master[MasterAssets.SavePedestals];
+				chkBlackRoot.Checked = data[(int)Pedestals.BlackRoot] == 1;
+				chkForlornRuins.Checked = data[(int)Pedestals.Forlorn] == 1;
+				chkGinso.Checked = data[(int)Pedestals.GinsoTree] == 1;
+				chkGrotto.Checked = data[(int)Pedestals.Grotto] == 1;
+				chkHollowGrove.Checked = data[(int)Pedestals.HollowGrove] == 1;
+				chkHoruFields.Checked = data[(int)Pedestals.HoruFields] == 1;
+				chkLostGrove.Checked = data[(int)Pedestals.LostGrove] == 1;
+				chkMountHoru.Checked = data[(int)Pedestals.MountHoru] == 1;
+				chkSorrowPass.Checked = data[(int)Pedestals.SorrowPass] == 1;
+				chkSunkenGlades.Checked = data[(int)Pedestals.SunkenGlades] == 1;
+				chkSwamp.Checked = data[(int)Pedestals.Swamp] == 1;
+				chkValleyOfTheWind.Checked = data[(int)Pedestals.Valley] == 1;
+
+				data = Save.Master[MasterAssets.WorldEvents];
+				chkCleanWater.Checked = data[(int)WorldEvents.CleanWater] == 1;
+				chkDarknessLifted.Checked = data[(int)WorldEvents.DarknessLifted] == 1;
+				chkForlornKey.Checked = data[(int)WorldEvents.ForlornRuinsKey] == 1;
+				chkGinsoEntered.Checked = data[(int)WorldEvents.GinsoTreeEntered] == 1;
+				chkGinsoKey.Checked = data[(int)WorldEvents.GinsoTreeKey] == 1;
+				chkGravityActivated.Checked = data[(int)WorldEvents.GravityActivated] == 1;
+				chkGumoFree.Checked = data[(int)WorldEvents.GumoFree] == 1;
+				chkMistLifted.Checked = data[(int)WorldEvents.MistLifted] == 1;
+				chkHoruKey.Checked = data[(int)WorldEvents.MountHoruKey] == 1;
+				chkSpiritTree.Checked = data[(int)WorldEvents.SpiritTreeReached] == 1;
+				chkWarmth.Checked = data[(int)WorldEvents.WarmthReturned] == 1;
+				chkWindRestored.Checked = data[(int)WorldEvents.WindRestored] == 1;
+
+				treeObjects.SuspendLayout();
+				loading = true;
+				Type[] types = typeof(SceneID).Assembly.GetTypes();
+				allNodes.Clear();
+				modifiedNodes.Clear();
+				for (int i = 0; i < types.Length; i++) {
+					Type asmType = types[i];
+					if (asmType != typeof(SceneID) && typeof(SceneID).IsAssignableFrom(asmType)) {
+						TreeNode parentNode = treeObjects.Nodes.Add(asmType.Name);
+						allNodes.Add(parentNode);
+
+						if (asmType != typeof(MasterAssets)) {
+							FieldInfo[] fields = asmType.GetFields(BindingFlags.Static | BindingFlags.Public);
+							for (int j = 0; j < fields.Length; j++) {
+								string fieldName = fields[j].Name;
+								TreeNode childNode = new TreeNode(fieldName);
+								SceneID sceneValue = (SceneID)fields[j].GetValue(null);
+								childNode.Tag = sceneValue;
+
+								data = Save.Find(sceneValue);
+								if (data != null) {
+									if (fieldName.IndexOf("Animator") >= 0) {
+										if (data.GetFloat(0) == 0) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("Trigger") >= 0 || fieldName.IndexOf("Restrict") >= 0) {
+										if (data[0] == 1) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("Torch") >= 0) {
+										if (data[0] == 0) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("Lever") >= 0) {
+										if (data.GetInt(0) == (int)(fieldName.IndexOf("GoesLeft") >= 0 ? LeverDirections.Right : LeverDirections.Left)) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("Creep") >= 0 || fieldName.IndexOf("Wall") >= 0 || fieldName.IndexOf("Stompable") >= 0 || fieldName.IndexOf("Bulb") >= 0 ||
+										  fieldName.IndexOf("Bombable") >= 0 || fieldName.IndexOf("Breakable") >= 0 || fieldName.IndexOf("PetrifiedPlant") >= 0) {
+										if (data.GetFloat((int)EntityDamage.Health) > 0) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("Keystone") >= 0 || fieldName.IndexOf("Mapstone") >= 0 || fieldName.IndexOf("Pickup") >= 0) {
+										if (data[(int)Pickup.Collected] == 0) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("AbilityCell") >= 0 || fieldName.IndexOf("HealthCell") >= 0 || fieldName.IndexOf("EnergyCell") >= 0 || fieldName.IndexOf("ExpOrb") >= 0) {
+										if (data[(int)Collectible.Collected] == 0) {
+											childNode.Checked = true;
+										}
+									} else if (fieldName.IndexOf("DoorWith") >= 0 || fieldName.IndexOf("EnergyDoor") >= 0) {
+										if (data.GetInt((int)Door.CurrentState) != 2) {
+											childNode.Checked = true;
+										}
+									}
+								} else {
+									childNode.Checked = true;
+								}
+								parentNode.Nodes.Add(childNode);
+							}
+						} else {
+							TreeNode childNode = parentNode.Nodes.Add("SwimmingBar_Animator");
+							childNode.Tag = MasterAssets.SwimmingBar_Animator;
+							data = Save.Find(MasterAssets.SwimmingBar_Animator);
+							if (data != null) {
+								if (data.GetFloat(0) == 0) {
+									childNode.Checked = true;
+								}
+							} else {
+								childNode.Checked = true;
+							}
+						}
+					}
+				}
+				treeObjects.ExpandAll();
+				treeObjects.ResumeLayout(true);
+				treeObjects.SelectedNode = treeObjects.Nodes[0];
+				loading = false;
+
 				this.Text = "Save Editor - " + Path.GetFileNameWithoutExtension(Save.FilePath);
 			} catch (Exception ex) {
-				MessageBox.Show("Failed to load save: " + ex.ToString());
+				MessageBox.Show(this, "Failed to load save: " + ex.ToString());
 			}
 		}
-
-		private void SaveEditor_Shown(object sender, EventArgs e) {
-			UpdateInfo();
-		}
-
 		private void btnSave_Click(object sender, EventArgs e) {
 			try {
 				SceneData data = Save.Master[MasterAssets.SeinLevel];
@@ -154,10 +279,24 @@ namespace LiveSplit.OriDE {
 				Save.MaxHealth = int.Parse(txtHPMax.Text);
 
 				data = Save.Master[MasterAssets.PlatformMovement];
-				data.WriteFloat((int)SaveInfo.PosX, float.Parse(txtPosX.Text));
-				data.WriteFloat((int)SaveInfo.PosY, float.Parse(txtPosY.Text));
-				data.WriteFloat((int)SaveInfo.SpeedX, float.Parse(txtVelocityX.Text));
-				data.WriteFloat((int)SaveInfo.SpeedY, float.Parse(txtVelocityY.Text));
+				IntFloat trueValue = default(IntFloat);
+				trueValue.FloatVal = float.Parse(txtPosX.Text);
+				data.WriteInt((int)SaveInfo.PosX, trueValue.IntVal);
+				trueValue.FloatVal = float.Parse(txtPosY.Text);
+				data.WriteInt((int)SaveInfo.PosY, trueValue.IntVal);
+				trueValue.FloatVal = float.Parse(txtVelocityX.Text);
+				data.WriteInt((int)SaveInfo.SpeedX, trueValue.IntVal);
+				trueValue.FloatVal = float.Parse(txtVelocityY.Text);
+				data.WriteInt((int)SaveInfo.SpeedY, trueValue.IntVal);
+
+				data = Save.Master[MasterAssets.ScenesManager];
+				trueValue.FloatVal = float.Parse(txtPosX.Text);
+				data.WriteInt(0, trueValue.IntVal);
+				trueValue.FloatVal = float.Parse(txtPosY.Text);
+				data.WriteInt(4, trueValue.IntVal);
+
+				//data = Save.Find(MasterAssets.BashTimeLine);
+				//data.WriteFloat(1, 8.416667f);
 
 				data = Save.Master[MasterAssets.PlayerAbilities];
 				data[(int)Abilities.AbilityMarkers] = (byte)(chkAbilityMarkers.Checked ? 1 : 0);
@@ -188,9 +327,9 @@ namespace LiveSplit.OriDE {
 				data[(int)Abilities.Regroup] = (byte)(chkRegroup.Checked ? 1 : 0);
 				data[(int)Abilities.Rekindle] = (byte)(chkRekindle.Checked ? 1 : 0);
 				data[(int)Abilities.Sense] = (byte)(chkSense.Checked ? 1 : 0);
-				data[(int)Abilities.SoulEfficiency] = (byte)(chkSoulLinkEfficiency.Checked ? 1 : 0);
+				data[(int)Abilities.SoulEfficiency] = (byte)(chkSpiritEfficiency.Checked ? 1 : 0);
 				data[(int)Abilities.SparkFlame] = (byte)(chkSparkFlame.Checked ? 1 : 0);
-				data[(int)Abilities.SoulFlameEfficiency] = (byte)(chkSpiritEfficiency.Checked ? 1 : 0);
+				data[(int)Abilities.SoulFlameEfficiency] = (byte)(chkSoulLinkEfficiency.Checked ? 1 : 0);
 				data[(int)Abilities.SpiritFlame] = (byte)(chkSpiritFlame.Checked ? 1 : 0);
 				data[(int)Abilities.SplitFlameUpgrade] = (byte)(chkSplitFlame.Checked ? 1 : 0);
 				data[(int)Abilities.Stomp] = (byte)(chkStomp.Checked ? 1 : 0);
@@ -204,9 +343,18 @@ namespace LiveSplit.OriDE {
 				data[(int)Abilities.WallJump] = (byte)(chkWallJump.Checked ? 1 : 0);
 				data[(int)Abilities.WaterBreath] = (byte)(chkWaterBreath.Checked ? 1 : 0);
 
+				int pointsUsed = (chkQuickFlame.Checked ? 1 : 0) + (chkSparkFlame.Checked ? 1 : 0) + (chkChargeFlameBurn.Checked ? 1 : 0) + (chkSplitFlame.Checked ? 1 : 0) +
+					(chkUltraLightBurst.Checked ? 2 : 0) + (chkCinderFlame.Checked ? 2 : 0) + (chkUltraStomp.Checked ? 2 : 0) + (chkRapidFlame.Checked ? 2 : 0) +
+					(chkChargeFlameBlast.Checked ? 3 : 0) + (chkUltraSplitFlame.Checked ? 3 : 0) + (chkMagnet.Checked ? 1 : 0) + (chkMapMarkers.Checked ? 1 : 0) +
+					(chkLifeEfficiency.Checked ? 1 : 0) + (chkUltraMagnet.Checked ? 1 : 0) + (chkEnergyEfficiency.Checked ? 2 : 0) + (chkAbilityMarkers.Checked ? 2 : 0) +
+					(chkSpiritEfficiency.Checked ? 2 : 0) + (chkLifeMarkers.Checked ? 2 : 0) + (chkEnergyMarkers.Checked ? 2 : 0) + (chkSense.Checked ? 3 : 0) +
+					(chkRekindle.Checked ? 1 : 0) + (chkRegroup.Checked ? 1 : 0) + (chkChargeFlameEfficiency.Checked ? 1 : 0) + (chkAirDash.Checked ? 2 : 0) +
+					(chkUltraSoulLink.Checked ? 2 : 0) + (chkChargeDash.Checked ? 2 : 0) + (chkWaterBreath.Checked ? 2 : 0) + (chkSoulLinkEfficiency.Checked ? 2 : 0) +
+					(chkTripleJump.Checked ? 3 : 0) + (chkUltraDefense.Checked ? 3 : 0);
 				data = Save.Master[MasterAssets.SeinInventory];
 				data.WriteInt((int)InventoryInfo.Keystones, int.Parse(txtKeystones.Text));
 				data.WriteInt((int)InventoryInfo.Mapstones, int.Parse(txtMapstones.Text));
+				data.WriteInt((int)InventoryInfo.SkillpointsPickedUp, pointsUsed - int.Parse(txtLvl.Text) + int.Parse(txtAP.Text));
 
 				data = Save.Master[MasterAssets.SeinSoulFlame];
 				bool hasSoulFlame = !string.IsNullOrEmpty(txtSoulX.Text);
@@ -217,8 +365,11 @@ namespace LiveSplit.OriDE {
 						data.Data = newData;
 					}
 					data[(int)SoulFlameInfo.HasSoulFlame] = 1;
-					data.WriteFloat((int)SoulFlameInfo.SoulX, float.Parse(txtSoulX.Text));
-					data.WriteFloat((int)SoulFlameInfo.SoulY, float.Parse(txtSoulY.Text));
+
+					trueValue.FloatVal = float.Parse(txtSoulX.Text);
+					data.WriteInt((int)SoulFlameInfo.SoulX, trueValue.IntVal);
+					trueValue.FloatVal = float.Parse(txtSoulY.Text);
+					data.WriteInt((int)SoulFlameInfo.SoulY, trueValue.IntVal);
 				} else {
 					if (data.Data.Length > 31) {
 						byte[] newData = new byte[31];
@@ -264,10 +415,155 @@ namespace LiveSplit.OriDE {
 
 				Save.DebugOn = true;
 
+				data = Save.Master[MasterAssets.SavePedestals];
+				data[(int)Pedestals.BlackRoot] = (byte)(chkBlackRoot.Checked ? 1 : 0);
+				data[(int)Pedestals.Forlorn] = (byte)(chkForlornRuins.Checked ? 1 : 0);
+				data[(int)Pedestals.GinsoTree] = (byte)(chkGinso.Checked ? 1 : 0);
+				data[(int)Pedestals.Grotto] = (byte)(chkGrotto.Checked ? 1 : 0);
+				data[(int)Pedestals.HollowGrove] = (byte)(chkHollowGrove.Checked ? 1 : 0);
+				data[(int)Pedestals.HoruFields] = (byte)(chkHoruFields.Checked ? 1 : 0);
+				data[(int)Pedestals.LostGrove] = (byte)(chkLostGrove.Checked ? 1 : 0);
+				data[(int)Pedestals.MountHoru] = (byte)(chkMountHoru.Checked ? 1 : 0);
+				data[(int)Pedestals.SorrowPass] = (byte)(chkSorrowPass.Checked ? 1 : 0);
+				data[(int)Pedestals.SunkenGlades] = (byte)(chkSunkenGlades.Checked ? 1 : 0);
+				data[(int)Pedestals.Swamp] = (byte)(chkSwamp.Checked ? 1 : 0);
+				data[(int)Pedestals.Valley] = (byte)(chkValleyOfTheWind.Checked ? 1 : 0);
+
+				data = Save.Master[MasterAssets.WorldEvents];
+				data[(int)WorldEvents.CleanWater] = (byte)(chkCleanWater.Checked ? 1 : 0);
+				data[(int)WorldEvents.DarknessLifted] = (byte)(chkDarknessLifted.Checked ? 1 : 0);
+				data[(int)WorldEvents.ForlornRuinsKey] = (byte)(chkForlornKey.Checked ? 1 : 0);
+				data[(int)WorldEvents.GinsoTreeEntered] = (byte)(chkGinsoEntered.Checked ? 1 : 0);
+				data[(int)WorldEvents.GinsoTreeKey] = (byte)(chkGinsoKey.Checked ? 1 : 0);
+				data[(int)WorldEvents.GravityActivated] = (byte)(chkGravityActivated.Checked ? 1 : 0);
+				data[(int)WorldEvents.GumoFree] = (byte)(chkGumoFree.Checked ? 1 : 0);
+				data[(int)WorldEvents.MistLifted] = (byte)(chkMistLifted.Checked ? 1 : 0);
+				data[(int)WorldEvents.MountHoruKey] = (byte)(chkHoruKey.Checked ? 1 : 0);
+				data[(int)WorldEvents.SpiritTreeReached] = (byte)(chkSpiritTree.Checked ? 1 : 0);
+				data[(int)WorldEvents.WarmthReturned] = (byte)(chkWarmth.Checked ? 1 : 0);
+				data[(int)WorldEvents.WindRestored] = (byte)(chkWindRestored.Checked ? 1 : 0);
+
+				for (int j = 0; j < modifiedNodes.Count; j++) {
+					TreeNode child = modifiedNodes[j];
+					SceneID sceneValue = (SceneID)child.Tag;
+					string fieldName = child.Text;
+
+					data = Save.Find(sceneValue);
+					bool enableDisable = !child.Checked;
+
+					if (data != null) {
+						if (fieldName.IndexOf("Animator") >= 0) {
+							data.WriteFloat(0, child.Checked ? 0 : 100f);
+							data[4] = 1;
+						} else if (fieldName.IndexOf("Trigger") >= 0 || fieldName.IndexOf("Restrict") >= 0) {
+							data[0] = (byte)(child.Checked ? 1 : 0);
+						} else if (fieldName.IndexOf("Torch") >= 0) {
+							data[0] = (byte)(child.Checked ? 0 : 1);
+						} else if (fieldName.IndexOf("Lever") >= 0) {
+							data.Data = new byte[4];
+							data.WriteInt(0, (int)(fieldName.IndexOf("GoesLeft") >= 0 ? (child.Checked ? LeverDirections.Right : LeverDirections.Left) : (child.Checked ? LeverDirections.Left : LeverDirections.Right)));
+						} else if (fieldName.IndexOf("Creep") >= 0 || fieldName.IndexOf("Wall") >= 0 || fieldName.IndexOf("Stompable") >= 0 || fieldName.IndexOf("Bulb") >= 0 ||
+								fieldName.IndexOf("Bombable") >= 0 || fieldName.IndexOf("Breakable") >= 0 || fieldName.IndexOf("PetrifiedPlant") >= 0) {
+							float currentHP = data.GetFloat((int)EntityDamage.Health);
+							data.WriteFloat((int)EntityDamage.Health, child.Checked ? (currentHP > 0 ? currentHP : data.GetFloat((int)EntityDamage.MaxHealth)) : -1f);
+						} else if (fieldName.IndexOf("Keystone") >= 0 || fieldName.IndexOf("Mapstone") >= 0 || fieldName.IndexOf("Pickup") >= 0) {
+							data[(int)Pickup.Collected] = (byte)(child.Checked ? 0 : 1);
+						} else if (fieldName.IndexOf("AbilityCell") >= 0 || fieldName.IndexOf("HealthCell") >= 0 || fieldName.IndexOf("EnergyCell") >= 0 || fieldName.IndexOf("ExpOrb") >= 0) {
+							data[(int)Collectible.Collected] = (byte)(child.Checked ? 0 : 1);
+						} else if (fieldName.IndexOf("DoorWith") >= 0 || fieldName.IndexOf("EnergyDoor") >= 0) {
+							int currentState = data.GetInt((int)Door.CurrentState);
+							data.WriteInt((int)Door.CurrentState, child.Checked ? 0 : (currentState == 0 ? 2 : currentState));
+							if (child.Checked) {
+								data.WriteInt((int)Door.SlotsPending, 0);
+								data.WriteInt((int)Door.SlotsFilled, 0);
+								data.WriteInt((int)Door.AmountOfItemsUsed, 0);
+							}
+						}
+					} else if (!child.Checked) {
+						SceneCollection collection = Save.Insert(sceneValue.Parent);
+						data = collection.Add(sceneValue);
+
+						if (fieldName.IndexOf("Animator") >= 0) {
+							data.Data = new byte[6];
+							data.WriteFloat(0, 100f);
+							data[4] = 1;
+						} else if (fieldName.IndexOf("Trigger") >= 0 || fieldName.IndexOf("Restrict") >= 0) {
+							data.Data = new byte[1];
+							data[0] = 0;
+						} else if (fieldName.IndexOf("Torch") >= 0) {
+							data.Data = new byte[1];
+							data[0] = 1;
+						} else if (fieldName.IndexOf("Lever") >= 0) {
+							data.Data = new byte[4];
+							data.WriteInt(0, (int)(fieldName.IndexOf("GoesLeft") >= 0 ? LeverDirections.Left : LeverDirections.Right));
+						} else if (fieldName.IndexOf("Creep") >= 0 || fieldName.IndexOf("Wall") >= 0 || fieldName.IndexOf("Stompable") >= 0 || fieldName.IndexOf("Bulb") >= 0 ||
+									fieldName.IndexOf("Bombable") >= 0 || fieldName.IndexOf("Breakable") >= 0 || fieldName.IndexOf("PetrifiedPlant") >= 0) {
+							data.Data = new byte[8];
+
+							if (fieldName.IndexOf("PetrifiedPlant") >= 0) {
+								data.WriteFloat((int)EntityDamage.Health, -1);
+								data.WriteFloat((int)EntityDamage.MaxHealth, 5);
+							} else if (fieldName.IndexOf("Stompable") >= 0 || fieldName.IndexOf("Bombable") >= 0 || fieldName.IndexOf("Breakable") >= 0 || fieldName.IndexOf("Wall") >= 0) {
+								data.WriteFloat((int)EntityDamage.Health, -5);
+								data.WriteFloat((int)EntityDamage.MaxHealth, 10);
+							} else if (fieldName.IndexOf("Creep") >= 0 || fieldName.IndexOf("Bulb") >= 0) {
+								data.WriteFloat((int)EntityDamage.Health, -1);
+								data.WriteFloat((int)EntityDamage.MaxHealth, 4);
+							}
+						} else if (fieldName.IndexOf("Keystone") >= 0 || fieldName.IndexOf("Mapstone") >= 0 || fieldName.IndexOf("Pickup") >= 0) {
+							data.Data = new byte[5];
+							data[(int)Pickup.Collected] = 1;
+						} else if (fieldName.IndexOf("AbilityCell") >= 0 || fieldName.IndexOf("HealthCell") >= 0 || fieldName.IndexOf("EnergyCell") >= 0 || fieldName.IndexOf("ExpOrb") >= 0) {
+							data.Data = new byte[1];
+							data[(int)Collectible.Collected] = 1;
+						} else if (fieldName.IndexOf("DoorWith") >= 0 || fieldName.IndexOf("EnergyDoor") >= 0) {
+							data.Data = new byte[16];
+							data.WriteInt((int)Door.CurrentState, 2);
+							data.WriteInt((int)Door.AmountOfItemsUsed, fieldName.IndexOf("Two") >= 0 ? 2 : 4);
+						}
+					}
+
+					if (sceneValue.Children != null) {
+						foreach (SceneID extra in sceneValue.Children) {
+							SetChildScene(sceneValue.Parent, extra, enableDisable);
+						}
+					}
+				}
+
 				Save.Save(Save.FilePath);
 				this.Close();
 			} catch (Exception ex) {
-				MessageBox.Show("Failed to save file: " + ex.ToString());
+				MessageBox.Show(this, "Failed to save file: " + ex.ToString());
+			}
+		}
+		public void SetChildScene(SceneID parent, SceneID id, bool enabled) {
+			SceneData data = Save.Find(id);
+			if (data != null) {
+				if (string.IsNullOrEmpty(id.Name)) {
+					data.WriteFloat(0, enabled ? 100f : 0f);
+					data[4] = 1;
+				} else if (id.Name.IndexOf("Activator") >= 0) {
+					data[0] = (byte)(enabled ? 1 : 0);
+				} else if (id.Name.IndexOf("Deactivate") >= 0) {
+					data[0] = (byte)(enabled ? 0 : 1);
+				} else if (id.Name.IndexOf("Animator") >= 0) {
+					data.WriteFloat(1, enabled ? 100f : 0f);
+				}
+			} else if (!enabled) {
+				SceneCollection collection = Save.Insert(parent);
+				data = collection.Add(id);
+
+				if (string.IsNullOrEmpty(id.Name)) {
+					data.Data = new byte[6];
+					data[4] = 1;
+				} else if (id.Name.IndexOf("Activator") >= 0) {
+					data.Data = new byte[1];
+				} else if (id.Name.IndexOf("Deactivate") >= 0) {
+					data.Data = new byte[1];
+					data[0] = 1;
+				} else if (id.Name.IndexOf("Animator") >= 0) {
+					data.Data = new byte[5];
+				}
 			}
 		}
 		private void btnDelete_Click(object sender, EventArgs e) {
@@ -277,7 +573,7 @@ namespace LiveSplit.OriDE {
 				}
 				this.Close();
 			} catch (Exception ex) {
-				MessageBox.Show("Failed to delete save: " + ex.ToString());
+				MessageBox.Show(this, "Failed to delete save: " + ex.ToString());
 			}
 		}
 		private void btnAll_Click(object sender, EventArgs e) {
@@ -298,15 +594,116 @@ namespace LiveSplit.OriDE {
 		}
 		private void btnObjectText_Click(object sender, EventArgs e) {
 			try {
-				int i = 1;
-				while (File.Exists(Path.GetFileNameWithoutExtension(Save.FilePath) + "-Objects" + i + ".txt")) {
-					i++;
+				string saveFile = Path.GetFileNameWithoutExtension(Save.FilePath);
+				if (File.Exists(saveFile + "-Objects1.txt")) {
+					File.Delete(saveFile + "-Objects2.txt");
+					File.Move(saveFile + "-Objects1.txt", saveFile + "-Objects2.txt");
 				}
-				Save.WriteObjectsAsText(Path.GetFileNameWithoutExtension(Save.FilePath) + "-Objects" + i + ".txt");
-				string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Path.GetFileNameWithoutExtension(Save.FilePath) + "-Objects" + i + ".txt");
-				MessageBox.Show("Wrote object data to " + fullPath);
+
+				Save.WriteObjectsAsText(saveFile + "-Objects1.txt");
+				string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), saveFile + "-Objects1.txt");
+				MessageBox.Show(this, "Wrote object data to " + fullPath);
 			} catch (Exception ex) {
-				MessageBox.Show("Failed to write file: " + ex.ToString());
+				MessageBox.Show(this, "Failed to write file: " + ex.ToString());
+			}
+		}
+		private void btnCopy_Click(object sender, EventArgs e) {
+			btnCopy.Visible = false;
+			txtCopy.Text = null;
+			txtCopy.Visible = true;
+			AcceptButton = null;
+			txtCopy.Focus();
+		}
+		private void txtCopy_KeyDown(object sender, KeyEventArgs e) {
+			if (e.KeyCode == Keys.Enter) {
+				btnSave.Focus();
+			} else if (e.KeyCode == Keys.Escape) {
+				txtCopy.Visible = false;
+				btnCopy.Visible = true;
+			}
+		}
+		private void txtCopy_Validated(object sender, EventArgs e) {
+			try {
+				if (!txtCopy.Visible) { return; }
+
+				txtCopy.Visible = false;
+				btnCopy.Visible = true;
+
+				if (string.IsNullOrEmpty(txtCopy.Text)) { return; }
+
+				string copyFilePath = Path.Combine(Path.GetDirectoryName(Save.FilePath), "saveFile" + int.Parse(txtCopy.Text) + ".sav");
+				if (File.Exists(copyFilePath)) {
+					if (MessageBox.Show(this, Path.GetFileName(copyFilePath) + " already exists. Do you want to overwrite?", "Warning", MessageBoxButtons.YesNo) != DialogResult.Yes) {
+						return;
+					}
+				}
+				Save.Save(copyFilePath);
+
+				MessageBox.Show(this, "Copied save to " + Path.GetFileName(copyFilePath));
+			} catch (Exception ex) {
+				MessageBox.Show(this, "Failed to write file: " + ex.ToString());
+			} finally {
+				AcceptButton = btnSave;
+			}
+		}
+		private void txtFilter_TextChanged(object sender, EventArgs e) {
+			SuspendUpdate.Suspend(this);
+			currentFilter = txtFilter.Text;
+			string[] filters = null;
+			if (!string.IsNullOrEmpty(currentFilter)) {
+				filters = currentFilter.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			}
+
+			treeObjects.SuspendLayout();
+			treeObjects.Nodes.Clear();
+
+			for (int i = 0; i < allNodes.Count; i++) {
+				TreeNode node = allNodes[i];
+				TreeNode copy = new TreeNode(node.Text);
+
+				bool addedParent = false;
+				if (filters != null && filters.Length > 0) {
+					for (int k = 0; k < filters.Length; k++) {
+						if (node.Text.IndexOf(filters[k], StringComparison.OrdinalIgnoreCase) >= 0) {
+							addedParent = true;
+							break;
+						}
+					}
+				}
+
+				bool addedChild = false;
+				for (int j = 0; j < node.Nodes.Count; j++) {
+					TreeNode child = node.Nodes[j];
+
+					bool shouldAdd = addedParent || filters == null || filters.Length == 0;
+					if (!shouldAdd) {
+						for (int k = 0; k < filters.Length; k++) {
+							if (child.Text.IndexOf(filters[k], StringComparison.OrdinalIgnoreCase) >= 0) {
+								shouldAdd = true;
+								break;
+							}
+						}
+					}
+
+					if (shouldAdd) {
+						addedChild = true;
+						copy.Nodes.Add(child);
+					}
+				}
+
+				if (addedChild || addedParent) {
+					treeObjects.Nodes.Add(copy);
+				}
+			}
+
+			treeObjects.ExpandAll();
+			treeObjects.ResumeLayout(true);
+			treeObjects.SelectedNode = treeObjects.Nodes[0];
+			SuspendUpdate.Resume(this);
+		}
+		private void treeObjects_AfterCheck(object sender, TreeViewEventArgs e) {
+			if (!loading && e.Node.Tag != null && !modifiedNodes.Contains(e.Node)) {
+				modifiedNodes.Add(e.Node);
 			}
 		}
 	}

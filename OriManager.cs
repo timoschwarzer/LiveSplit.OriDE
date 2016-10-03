@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using OriMap;
@@ -13,8 +12,6 @@ namespace LiveSplit.OriDE {
 		public OriMemory Memory { get; set; }
 		private bool useLivesplitColors = true, extraFast = false, goingFast = false;
 		private KeyboardHook kbHook;
-        private OriMapWindow mapWindow;
-
 		public OriManager() {
 			this.DoubleBuffered = true;
 			kbHook = new KeyboardHook(KeyboardHook.Parameters.PassAllKeysToNextApp);
@@ -27,6 +24,7 @@ namespace LiveSplit.OriDE {
 		}
 		~OriManager() {
 			kbHook.Dispose();
+			if (saveManager != null) { saveManager.Dispose(); }
 		}
 
 		private void KeyhookPress(KeyboardHook.KeyboardHookEventArgs e) {
@@ -54,9 +52,8 @@ namespace LiveSplit.OriDE {
 			} else if (e.Control && e.KeyCode == Keys.F) {
 				extraFast = !extraFast;
 			} else if (e.Control && e.KeyCode == Keys.S) {
-				using (SaveManager saveManager = new SaveManager()) {
-					saveManager.ShowDialog(this);
-				}
+				saveManager = new SaveManager();
+				saveManager.Show(this);
 			} else if (e.Control && e.KeyCode == Keys.T) {
 				if (this.Memory.IsTASEnabled) {
                     this.Memory.IsTASEnabled = false;
@@ -116,35 +113,27 @@ namespace LiveSplit.OriDE {
 			if (this.InvokeRequired) {
 				this.Invoke((Action)UpdateValues);
 			} else {
-                bool tasEnabled = Memory.IsTASEnabled;
-                if (tasEnabled) {
-                    if (this.Width < 650) {
-                        this.Width = 650;
-                        this.Height = 235;
-                        lblCurrentInput.Visible = true;
-                        lblNextInput.Visible = true;
-                        lblTASStates.Visible = true;
-                    }
-                    lblCurrentInput.Text = Memory.GetTASCurrentInput();
-                    lblNextInput.Text = Memory.GetTASNextInput();
-                    lblTASStates.Text = Memory.GetTASExtraInfo();
-                }
-
-                GameState gameState = Memory.GetGameState();
-                bool isInGameWorld = CheckInGameWorld(gameState);
-                bool isStartingGame = CheckStartingNewGame(gameState);
-                PointF currentSpeed = Memory.CurrentSpeed();
-
-                PointF pos = Memory.HasTAS() ? Memory.GetTASOriPositon() : Memory.GetCameraTargetPosition();
-
-                if (this.mapWindow != null) {
-                    this.mapWindow.setPos(pos);
-                }
-
-                HitBox ori = new HitBox(pos, 0.68f, 1.15f, true);
-                HitBox hitBox = new HitBox("145,580,20,40");
-                HitBox hitBox2 = new HitBox("170,580,130,140");
-                bool inFinal = hitBox.Intersects(ori) || hitBox2.Intersects(ori);
+				bool tasEnabled = this.Width == 650 || (Memory.GetTASState() & 1) != 0;
+				if (this.Width < 650 && tasEnabled) {
+					this.Width = 650;
+					this.Height = 235;
+					lblCurrentInput.Visible = true;
+					lblNextInput.Visible = true;
+					lblTASStates.Visible = true;
+				} else {
+					lblCurrentInput.Text = Memory.GetTASCurrentInput();
+					lblNextInput.Text = Memory.GetTASNextInput();
+					lblTASStates.Text = Memory.GetTASExtraInfo();
+				}
+				GameState gameState = Memory.GetGameState();
+				bool isInGameWorld = CheckInGameWorld(gameState);
+				bool isStartingGame = CheckStartingNewGame(gameState);
+				PointF currentSpeed = Memory.CurrentSpeed();
+				PointF pos = Memory.HasTAS() ? Memory.GetTASOriPositon() : Memory.GetCameraTargetPosition();
+				HitBox ori = new HitBox(pos, 0.68f, 1.15f, true);
+				HitBox hitBox = new HitBox("145,580,20,40");
+				HitBox hitBox2 = new HitBox("170,580,130,140");
+				bool inFinal = hitBox.Intersects(ori) || hitBox2.Intersects(ori);
 
                 if (extraFast && Math.Abs(Memory.WaterSpeed() - 9f) > 0.1f && !inFinal) {
                     goingFast = true;
@@ -168,21 +157,21 @@ namespace LiveSplit.OriDE {
                     total /= areas.Count;
                 }
 
-                List<Scene> scenes = Memory.GetScenes();
-                string currentScene = string.Empty;
-                for (int i = 0; i < scenes.Count; i++) {
-                    Scene scene = scenes[i];
-                    if (scene.State == SceneState.Loaded) {
-                        currentScene = scene.Name;
-                        break;
-                    }
-                }
-                lblArea.Text = "Area: " + (string.IsNullOrEmpty(currentArea.Name) ? "N/A" : currentArea.Name + " - " + currentArea.Progress.ToString("0.00") + "%");
-                lblMap.Text = "Total: " + total.ToString("0.00") + "% Scene: " + currentScene;
-                lblPos.Text = "Pos: " + pos.X.ToString("0.000") + ", " + pos.Y.ToString("0.000");
-                lblSpeed.Text = (extraFast ? "Insane Speed: " : "Speed: ") + currentSpeed.X.ToString("0.000") + ", " + currentSpeed.Y.ToString("0.000") + " (" + Math.Sqrt(currentSpeed.X * currentSpeed.X + currentSpeed.Y * currentSpeed.Y).ToString("0.000") + ")";
-                PointF cursor = Memory.GetCursorPosition();
-                lblCursorPosition.Text = "Cursor: " + cursor.X.ToString("0.000") + ", " + cursor.Y.ToString("0.000");
+				List<Scene> scenes = Memory.GetScenes();
+				string currentScene = string.Empty;
+				for (int i = 0; i < scenes.Count; i++) {
+					Scene scene = scenes[i];
+					if (scene.State == SceneState.Loaded) {
+						currentScene = scene.Name;
+						break;
+					}
+				}
+				lblArea.Text = "Area: " + (string.IsNullOrEmpty(currentArea.Name) ? "N/A" : currentArea.Name + " - " + currentArea.Progress.ToString("0.00") + "%");
+				lblMap.Text = "Total: " + total.ToString("0.00") + "% Scene: " + currentScene;
+				lblPos.Text = "Pos: " + pos.X.ToString("0.000") + ", " + pos.Y.ToString("0.000");
+				lblSpeed.Text = (extraFast ? "Insane Speed: " : "Speed: ") + currentSpeed.X.ToString("0.000") + ", " + currentSpeed.Y.ToString("0.000") + " (" + Math.Sqrt(currentSpeed.X * currentSpeed.X + currentSpeed.Y * currentSpeed.Y).ToString("0.000") + ")";
+				PointF cursor = Memory.GetCursorPosition();
+				lblCursorPosition.Text = "Cursor: " + cursor.X.ToString("0.000") + ", " + cursor.Y.ToString("0.000");
 
                 if (isInGameWorld) {
                     int level = Memory.GetCurrentLevel();

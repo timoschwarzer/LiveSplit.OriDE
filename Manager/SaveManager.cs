@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
@@ -9,7 +10,7 @@ namespace LiveSplit.OriDE {
 			InitializeComponent();
 
 			Assembly asm = Assembly.GetExecutingAssembly();
-			Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Manager.Images.kuroBG.png");
+			Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Images.kuroBG.png");
 			if (file != null) {
 				flowLayout.BackgroundImage = Image.FromStream(file);
 			}
@@ -22,19 +23,47 @@ namespace LiveSplit.OriDE {
 				Assembly asm = Assembly.GetExecutingAssembly();
 
 				string savePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Ori and the Blind Forest DE\");
-				string[] files = Directory.GetFiles(savePath, "*.sav", SearchOption.TopDirectoryOnly);
+				List<string> files = new List<string>(Directory.GetFiles(savePath, "*.sav", SearchOption.TopDirectoryOnly));
+				files.Sort(delegate (string file1, string file2) {
+					int f1 = 0;
+					int.TryParse(Path.GetFileNameWithoutExtension(file1).Substring(8), out f1);
+					int f2 = 0;
+					int.TryParse(Path.GetFileNameWithoutExtension(file2).Substring(8), out f2);
+					return f1 > f2 ? 1 : f1 < f2 ? -1 : 0;
+				});
+
+				bool shouldSuspend = this.Visible;
+				if (shouldSuspend) { SuspendUpdate.Suspend(this); }
 
 				flowLayout.SuspendLayout();
 
+				foreach (Control c in flowLayout.Controls) {
+					FlowLayoutPanel panel = c as FlowLayoutPanel;
+					if (panel != null) {
+						foreach (Control pc in panel.Controls) {
+							PictureBox pb = pc as PictureBox;
+							if (pb != null) {
+								pb.Click -= SaveImage_Click;
+							}
+							pc.Dispose();
+						}
+						panel.Controls.Clear();
+					}
+				}
+
+				flowLayout.Controls.Clear();
+
 				int count = 0;
-				for (int i = 0; i < files.Length; i++) {
+				for (int i = 0; i < files.Count; i++) {
 					string name = Path.GetFileNameWithoutExtension(files[i]);
 
 					if (name.IndexOf("bkup", StringComparison.OrdinalIgnoreCase) >= 0) { continue; }
 
 					count++;
 					SaveGameData save = new SaveGameData();
-					save.Load(files[i]);
+					try {
+						save.Load(files[i]);
+					} catch { continue; }
 
 					SceneData data = save.Master[MasterAssets.SeinLevel];
 					int currentLevel = (data?.GetInt((int)LevelInfo.CurrentLevel)).GetValueOrDefault(0);
@@ -49,7 +78,7 @@ namespace LiveSplit.OriDE {
 					saveImage.Click += SaveImage_Click;
 					saveImage.Tag = save;
 
-					Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Manager.Images." + save.AreaName + ".png");
+					Stream file = asm.GetManifestResourceStream("LiveSplit.OriDE.Images." + save.AreaName + ".png");
 					if (file != null) {
 						saveImage.Image = Image.FromStream(file);
 					}
@@ -80,13 +109,11 @@ namespace LiveSplit.OriDE {
 				foreach (Control c in flowLayout.Controls) {
 					FlowLayoutPanel panel = c as FlowLayoutPanel;
 					if (panel != null) {
-						panel.ResumeLayout(false);
-						panel.PerformLayout();
+						panel.ResumeLayout(true);
 					}
 				}
 
-				flowLayout.ResumeLayout(false);
-				flowLayout.PerformLayout();
+				flowLayout.ResumeLayout(true);
 
 				int sqSize = (int)Math.Ceiling(Math.Sqrt(count));
 				if (count > sqSize * (sqSize - 1)) {
@@ -94,38 +121,43 @@ namespace LiveSplit.OriDE {
 				} else {
 					this.ClientSize = new Size((sqSize - 1) * 200, sqSize * 78);
 				}
+				if (shouldSuspend) { SuspendUpdate.Resume(this); }
 			} catch { }
 		}
-
 		private void SaveImage_Click(object sender, EventArgs e) {
 			try {
 				using (SaveEditor editor = new SaveEditor()) {
 					editor.Save = (SaveGameData)((PictureBox)sender).Tag;
+					editor.Save.Load(editor.Save.FilePath);
 					editor.ShowDialog(this);
 				}
 
-				flowLayout.SuspendLayout();
-
-				foreach (Control c in flowLayout.Controls) {
-					FlowLayoutPanel panel = c as FlowLayoutPanel;
-					if (panel != null) {
-						foreach (Control pc in panel.Controls) {
-							PictureBox pb = pc as PictureBox;
-							if (pb != null) {
-								pb.Click -= SaveImage_Click;
-							}
-							pc.Dispose();
-						}
-						panel.Controls.Clear();
-					}
-				}
-
-				flowLayout.Controls.Clear();
-				flowLayout.ResumeLayout(false);
-				flowLayout.PerformLayout();
-
 				GetAllSaves();
 			} catch { }
+		}
+		private void SaveManager_KeyDown(object sender, KeyEventArgs e) {
+			try {
+				if (e.KeyCode == Keys.F5) {
+					GetAllSaves();
+				}
+			} catch { }
+		}
+	}
+	public static class SuspendUpdate {
+		private const int WM_SETREDRAW = 0x000B;
+
+		public static void Suspend(Control control) {
+			Message msgSuspendUpdate = Message.Create(control.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+			NativeWindow window = NativeWindow.FromHandle(control.Handle);
+			window.DefWndProc(ref msgSuspendUpdate);
+		}
+
+		public static void Resume(Control control) {
+			IntPtr wparam = new IntPtr(1);
+			Message msgResumeUpdate = Message.Create(control.Handle, WM_SETREDRAW, wparam, IntPtr.Zero);
+			NativeWindow window = NativeWindow.FromHandle(control.Handle);
+			window.DefWndProc(ref msgResumeUpdate);
+			control.Refresh();
 		}
 	}
 }
